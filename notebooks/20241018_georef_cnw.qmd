@@ -1,0 +1,134 @@
+---
+title: "Performances on a Map"
+format: html
+editor: visual
+---
+
+```{r}
+library(leaflet)
+library(tidyverse)
+```
+
+```{r}
+cnw <- readRDS("../output_data/cnw_dataframe.rds")
+```
+
+```{r}
+cnw_performance <- cnw %>% 
+  unnest(performances)
+```
+
+```{r}
+cnw_performance %>%
+  filter(place != "") %>%
+  count(place, sort = TRUE)
+```
+
+## Cleaning:
+
+```{r}
+cnw_performance %>%
+  filter(place != "") %>%
+  mutate(place = str_remove(place, "\\(\\?\\)")) %>%
+  mutate(place = str_squish(place)) %>%
+  mutate(place = str_replace(place, "København", "Copenhagen")) %>%
+  mutate(place = str_replace(place, "Amsterdam", "Amsterdam, Netherlands")) %>% 
+  mutate(place = str_replace(place, "London", "London, England")) %>% 
+  count(place, sort = TRUE) -> cnw_performance_cities
+```
+
+
+
+```{r}
+ cities <- cnw_performance_cities %>%  pull(place)
+```
+
+```{r}
+#Load necessary libraries
+library(tibble)
+library(dplyr)
+library(osmdata)  # Assuming you are using osmdata for OSM queries
+
+# Initialise empty dataframes
+geo_loc <- tibble()
+temp <- tibble()
+osm_response <- tibble()
+temp_missing <- tibble()
+
+# Define the hierarchy of address types
+address_priority <- c("city", "town", "suburb", "village", "hamlet")
+
+# For loop through cities getting coordinates from Open Street Map(OSM)
+for (city in cities) {
+  # Sys sleep in order not to harass OSM (Is there a throttle at all?)
+  Sys.sleep(1)
+
+  # Store response from OSM
+  osm_response <- getbb(place_name = city, format_out = "data.frame")
+
+  # Make sure temp-dataframes are empty from previous loop through
+  temp <- tibble()
+  temp_missing <- tibble()
+
+  # First if-statement: If the response from OSM IS NOT a dataframe.
+  if (!is.data.frame(osm_response)) {
+    # Fill temp_missing with NA-values
+    temp_missing <- tibble(osm_name = city, osm_nom = NA, adresstype = NA, lon = NA, lat = NA, display_name = NA)
+    # Add result to geo_loc-dataframe
+    geo_loc <- geo_loc %>%
+      bind_rows(temp_missing)
+
+  # Second if-statement - process dataframes with more than zero rows
+  } else {
+    # Filter the osm_response to select the highest priority address type available
+    for (type in address_priority) {
+      filtered_response <- osm_response %>% filter(addresstype == type)
+      if (nrow(filtered_response) > 0) {
+        osm_response <- filtered_response
+        break
+      }
+    }
+
+    # If no relevant address type is found, mark as missing
+    if (nrow(osm_response) == 0) {
+      temp_missing <- tibble(osm_name = city, osm_nom = NA, adresstype = NA, lon = NA, lat = NA, display_name = NA)
+      geo_loc <- geo_loc %>%
+        bind_rows(temp_missing)
+    } else {
+      # Otherwise, take the first match (highest priority)
+      temp <- tibble(
+        osm_name = city,
+        osm_nom = osm_response$name[1],
+        adresstype = osm_response$addresstype[1],
+        lon = osm_response$lon[1],
+        lat = osm_response$lat[1],
+        display_name = osm_response$display_name[1]
+      )
+      geo_loc <- geo_loc %>%
+        bind_rows(temp)
+    }
+  }
+}
+```
+
+Amsterdam and London was added information. We're removing it again and changing osm_name to place:
+
+```{r}
+ geo_loc <- geo_loc %>%
+  rename(place = osm_name) %>% 
+  mutate(place = str_replace(place, "Amsterdam, Netherlands", "Amsterdam")) %>% 
+  mutate(place = str_replace(place, "London, England", "London"))
+```
+
+# Extract country from display_name:
+
+```{r}
+geo_loc <- geo_loc %>%
+   mutate(country = str_extract(display_name, "(, )(\\w+ *\\/* *\\w*)$", group = 2)) %>%
+   select(place, country, display_name, everything())
+
+saveRDS(geo_loc, "../output_data/20241020_cnw_performances_geographical_information.rds")
+```
+
+
+

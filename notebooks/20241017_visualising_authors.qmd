@@ -1,0 +1,92 @@
+---
+title: "Visualising authors"
+format: html
+editor: visual
+---
+
+```{r}
+library(ggpattern)
+library(tidyverse)
+library(imager)
+library(magick)
+```
+
+# Load data
+
+```{r}
+cnw <- readRDS("../output_data/preliminary_performances_music_enriched.rds")
+```
+
+# Which authors has Carl Nielsen composed most music to:
+
+```{r}
+cnw %>% 
+  filter(author != "") %>% 
+  count(author, sort = TRUE) %>% 
+  slice_max(n, n = 5) -> cnw_top5_author
+```
+
+```{r}
+cnw_top5_author
+```
+
+```{r}
+list.files("../graphics/images", full.names = T)
+```
+
+```{r}
+ filenames <- c("../graphics/images/grundtvig.png", "../graphics/images/oehlenschlager.jpeg", "../graphics/images/helge_rode.jpeg", "../graphics/images/JP_Jacobsen.png", "../graphics/images/jeppe_aakjaer.jpeg")
+```
+
+```{r}
+cnw_top5_author <- cnw_top5_author %>%  add_column(file = filenames)
+```
+
+```{r}
+cnw_top5_author
+```
+
+```{r}
+jp <- load.image("../graphics/images/JP_Jacobsen.png")
+gv <- load.image("../graphics/images/grundtvig.png")
+```
+
+```{r}
+plot(jp)
+plot(gv)
+```
+
+```{r}
+jp
+```
+
+```{r}
+gv
+```
+
+```{r}
+cnw_top5_author %>% 
+  mutate(author = reorder(author, n)) %>% 
+  ggplot(aes(author, n)) +
+  geom_col_pattern(
+    aes(
+      fill             = author,
+      pattern_filename = I(file),
+    ), 
+    pattern          = 'image', 
+    pattern_type     = 'expand',
+    pattern_scale    = 30,
+    colour           = 'black'
+    
+  ) +
+  theme_bw(15) +
+  labs(
+    title    = "Most frequent authors with cnw works",
+    subtitle = "based on data from cnw",
+    x = "Authro",
+    y = "count of works with cnw music "
+  ) +
+  theme(legend.position = 'none') +
+  theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
+  coord_flip()
+```

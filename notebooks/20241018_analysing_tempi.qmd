@@ -1,0 +1,25 @@
+---
+title: "Handling tempi"
+format: html
+editor: visual
+---
+# Loading Libraries
+```{r}
+library(tidyverse)
+```
+
+
+# Load data
+
+```{r}
+cnw <- readRDS("output_data/cnw_dataframe.rds")
+```
+
+
+
+```{r}
+cnw %>% 
+  unnest(music) %>% 
+  count(tempo, sort = TRUE)
+```
+

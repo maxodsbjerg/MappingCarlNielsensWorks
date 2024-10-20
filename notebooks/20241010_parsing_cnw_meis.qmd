@@ -1,0 +1,266 @@
+---
+title: "Parsing Carl Nielsen Mei-files"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(xml2)
+library(stringdist)
+library(jsonlite)
+```
+
+```{r}
+meis <- tibble(file = list.files("../data-cnw", pattern = "cnw", full.names = T))
+```
+
+Åh åh talene passer ikk. De er ikke smukt fortløbende:
+
+```{r}
+meis <- meis %>%  
+  mutate(number = as.numeric(str_extract(file, "\\d{4}")))
+```
+
+Hvor går det galt?
+
+```{r}
+meis <- meis %>% 
+  mutate(gap = number - lag(number, default = 0))
+```
+
+```{r}
+meis <- meis %>% 
+  rowwise() %>% 
+  mutate(xml = list(read_xml(file))) %>% 
+  ungroup()
+```
+
+#### Extracting general metadata and performances
+
+```{r}
+cnw_extract_1 <- meis %>% 
+  rowwise() %>% 
+  mutate(
+    title = xml %>%  xml_find_all(
+      "/d1:mei/d1:meiHead/d1:workList/d1:work/d1:title[position() <= 2]"
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    title_subordinate = xml %>%  xml_find_all(
+      '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:title[@type = "subordinate"]'
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    composer = xml %>% xml_find_all(
+      '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:contributor/d1:persName[@role="composer"]'
+    ) %>% xml_text(),
+    author = xml %>% xml_find_all(
+      '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:contributor/d1:persName[@role="author"]'
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    creation = xml %>%  xml_find_all("/d1:mei/d1:meiHead/d1:workList/d1:work/d1:creation") %>% xml_text() %>% str_c(collapse = "|"),
+    classification = xml %>% xml_find_all(
+      "/d1:mei/d1:meiHead/d1:workList/d1:work/d1:classification/d1:termList/d1:term"
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    history = xml %>% xml_find_all("/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history") %>% xml_text(),
+    performances = list(tibble(
+      isodate = xml_find_all(xml, 
+                             '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:history/d1:eventList[@type="performances"]/d1:event/d1:date'
+      ) %>% xml_attr("isodate"),
+      startdate = xml %>% xml_find_all(
+        '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:history/d1:eventList[@type="performances"]/d1:event/d1:date'
+      ) %>% xml_attr("startdate"),
+      enddate = xml %>% xml_find_all(
+        '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:history/d1:eventList[@type="performances"]/d1:event/d1:date'
+      ) %>% xml_attr("enddate"),
+      place = xml %>% xml_find_all(
+        '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:history/d1:eventList[@type="performances"]/d1:event'
+      ) %>%
+        xml_find_first('d1:geogName[@role="place"]') %>%
+        xml_text(),
+      venue = xml %>% xml_find_all(
+        '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:history/d1:eventList[@type="performances"]/d1:event'
+      ) %>%
+        xml_find_first('d1:geogName[@role="venue"]') %>%
+        xml_text(),
+      ensemble = xml %>% xml_find_all(
+        '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:history/d1:eventList[@type="performances"]/d1:event'
+      ) %>%
+        xml_find_first('d1:corpName[@role="ensemble"]') %>%
+        xml_text(),
+      conductor = xml %>% xml_find_all(
+        '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:history/d1:eventList[@type="performances"]/d1:event'
+      ) %>%
+        xml_find_first('d1:persName[@role="conductor"]') %>%
+        xml_text()
+    ))) %>% 
+  rowwise() %>%
+  mutate(empty = nrow(performances) == 0) %>%
+  mutate(length = length(performances)) %>% 
+  mutate(source = "df1") %>% 
+  select(file, 
+         source,
+         title,
+         title_subordinate,
+         composer,
+         author,
+         creation,
+         classification,
+         history, performances, empty, length, xml)
+```
+
+```{r}
+cnw_extract_2 <- meis %>% 
+  rowwise() %>% 
+  mutate(
+    title = xml %>%  xml_find_all(
+      "/d1:mei/d1:meiHead/d1:workList/d1:work/d1:title[position() <= 2]"
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    title_subordinate = xml %>%  xml_find_all(
+      '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:title[@type = "subordinate"]'
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    composer = xml %>% xml_find_all(
+      '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:contributor/d1:persName[@role="composer"]'
+    ) %>% xml_text(),
+    author = xml %>% xml_find_all(
+      '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:contributor/d1:persName[@role="author"]'
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    creation = xml %>%  xml_find_all("/d1:mei/d1:meiHead/d1:workList/d1:work/d1:creation") %>% xml_text() %>% str_c(collapse = "|"),
+    classification = xml %>% xml_find_all(
+      "/d1:mei/d1:meiHead/d1:workList/d1:work/d1:classification/d1:termList/d1:term"
+    ) %>% xml_text() %>% str_c(collapse = "|"),
+    history = xml %>% xml_find_all("/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history") %>% xml_text(),
+  
+    performances = list(tibble(
+      isodate = xml_find_all(xml, 
+          '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history/d1:eventList[@type="performances"]/d1:event/d1:date'
+        ) %>% xml_attr("isodate"),
+      startdate = xml %>% xml_find_all(
+          '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history/d1:eventList[@type="performances"]/d1:event/d1:date'
+        ) %>% xml_attr("startdate"),
+        enddate = xml %>% xml_find_all(
+          '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history/d1:eventList[@type="performances"]/d1:event/d1:date'
+        ) %>% xml_attr("enddate"),
+        place = xml %>% xml_find_all(
+          '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history/d1:eventList[@type="performances"]/d1:event'
+        ) %>%
+          xml_find_first('d1:geogName[@role="place"]') %>%
+          xml_text(),
+        venue = xml %>% xml_find_all(
+          '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history/d1:eventList[@type="performances"]/d1:event'
+        ) %>%
+          xml_find_first('d1:geogName[@role="venue"]') %>%
+          xml_text(),
+        ensemble = xml %>% xml_find_all(
+          '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history/d1:eventList[@type="performances"]/d1:event'
+        ) %>%
+          xml_find_first('d1:corpName[@role="ensemble"]') %>%
+          xml_text(),
+        conductor = xml %>% xml_find_all(
+          '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:history/d1:eventList[@type="performances"]/d1:event'
+        ) %>%
+          xml_find_first('d1:persName[@role="conductor"]') %>%
+          xml_text()
+    ))) %>% 
+  rowwise() %>%
+  mutate(empty = nrow(performances) == 0) %>%
+  mutate(length = length(performances)) %>%  
+  mutate(source = "df2") %>%
+  select(file, 
+         source,
+         title,
+         title_subordinate,
+         composer,
+         author,
+         creation,
+         classification,
+         history, performances, empty, length, xml)
+```
+
+```{r}
+cnw_extract_1_filtered <- cnw_extract_1 %>% filter(empty == FALSE)
+cnw_extract_2_filtered <- cnw_extract_2 %>% filter(empty == FALSE)
+```
+
+```{r}
+cnw_extract_1_true <- cnw_extract_1 %>% 
+  filter(empty == TRUE)
+```
+
+```{r}
+cnw_merged <- bind_rows(cnw_extract_1_filtered, cnw_extract_2_filtered, cnw_extract_1_true)
+```
+
+```{r}
+cnw_merged <- cnw_merged %>% 
+  arrange(empty) %>% 
+  distinct(file, .keep_all = TRUE) %>% 
+  arrange(file)
+```
+
+```{r}
+cnw_merged
+```
+
+### Extracting music:
+
+```{r}
+mei <- read_xml("../data-cnw/cnw0039.xml")
+```
+
+Standard:
+
+```{r}
+length(xml_find_all(mei,
+             '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:componentList/d1:expression/d1:componentList/d1:expression/d1:tempo') %>% 
+  xml_text())
+```
+
+```{r}
+length(xml_find_all(mei,
+             '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression//d1:tempo') %>% 
+  xml_text())
+```
+
+Fall back:
+
+```{r}
+xml_find_all(mei,
+             '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:componentList/d1:expression/d1:tempo')  %>% xml_text()
+```
+
+Fallback 3:
+
+```{r}
+xml_find_all(mei,
+             '/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression/d1:tempo')  %>% xml_text()
+```
+
+### adding music to merged dataframe:
+
+```{r}
+cnw_music <- cnw_merged %>% 
+  mutate(music = list(
+      tibble(
+        tempo = xml %>%  xml_find_all('/d1:mei/d1:meiHead/d1:workList/d1:work/d1:expressionList/d1:expression//d1:tempo') %>% xml_text()
+      )
+    )) %>% 
+  mutate(empty_music = nrow(music) == 0) %>%
+  ungroup()
+```
+
+# Expanding metadata to columns
+
+```{r}
+cnw_music <- cnw_music %>% 
+  mutate_at(c('composer', 'author'), ~str_squish(.)) %>% 
+  mutate(composer = str_squish(composer)) %>% 
+  mutate_at(c('title_subordinate', "author"), ~na_if(., '')) %>% 
+  separate(title, into = c("title_da", "title_en"), sep = "\\|") %>% 
+  separate(title_subordinate, into = c("title_sub_da", "title_sub_en"), sep = "\\|") %>% 
+  separate(classification, into = c("classification_1", "classification_2", "classification_3", "classification_4", "classification_5", "classification_6"), sep = "\\|")
+```
+```{r}
+cnw_music <- cnw_music %>% 
+  select(-source, -empty, -length, -empty_music, -xml)
+```
+
+```{r}
+saveRDS(cnw_music, file = "../output_data/cnw_dataframe.rds")
+```

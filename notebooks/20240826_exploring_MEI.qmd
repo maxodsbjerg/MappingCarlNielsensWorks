@@ -1,0 +1,140 @@
+---
+title: "Exploring MEI"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+library(jsonlite)
+```
+
+```{r}
+cnw <- fromJSON("../output_data/carl_nielsen_works_simplified_data.json")
+```
+
+
+
+```{r}
+cnw %>% 
+  drop_na(author) %>% 
+  count(author, sort = TRUE) %>% 
+  slice_max(n, n = 7) %>% 
+  mutate(author = reorder(author, n)) %>%
+  ggplot(aes(x = author, y = n)) +
+  geom_col() +
+  coord_flip()
+```
+
+
+```{r}
+cnw %>% 
+  count(title_da, sort = TRUE)
+```
+```{r}
+cnw %>% 
+  select(performances) %>% 
+  rowwise() %>% 
+  mutate(empty = length(performances) == 0) %>% 
+  count(empty)
+```
+
+```{r}
+cnw %>% 
+  unnest(performances) ->  cnw_performances
+```
+
+```{r}
+cnw_performances %>% 
+  count(title_da, file)
+```
+
+
+```{r}
+cnw_performances %>% 
+  count(title_da, sort = TRUE)
+```
+
+```{r}
+cnw_performances %>% 
+  count(venue, sort = TRUE)
+```
+
+```{r}
+cnw_performances %>% 
+  arrange(isodate)
+```
+
+
+```{r}
+cnw_performances %>% 
+  drop_na(isodate) %>% 
+  mutate(str_squish(isodate)) %>% 
+  mutate(isodate_ymd = ymd(isodate)) %>% 
+  drop_na(isodate_ymd) %>% 
+  select(file, title_da, isodate, venue, isodate_ymd) %>% 
+  filter(is.na(isodate_ymd))
+```
+
+
+```{r}
+cnw_performances %>% 
+  drop_na(isodate) %>% 
+  mutate(str_squish(isodate)) %>% 
+  mutate(isodate_ymd = ymd(isodate)) %>%
+  drop_na(isodate_ymd) %>% 
+  mutate(year = year(isodate_ymd)) %>% 
+  group_by(year) %>% 
+  summarise(n = n())
+```
+
+
+
+
+```{r}
+cnw_performances %>% 
+  drop_na(isodate) %>% 
+  mutate(str_squish(isodate)) %>% 
+  mutate(isodate_ymd = ymd(isodate)) %>%
+  drop_na(isodate_ymd) %>% 
+  mutate(year = year(isodate_ymd)) %>% 
+  group_by(year) %>% 
+  summarise(n = n()) %>% 
+  ggplot(aes(x = year, y = n)) +
+  geom_col() +
+  theme(axis.text.x = element_text(angle=45)) +
+  ggtitle("CNW - perfomances pr year")
+```
+
+```{r}
+cnw_performances %>% 
+  mutate_if(is.character, list(~na_if(.,""))) %>% 
+  #filter(place != "Copenhagen") %>% 
+  count(place, sort = TRUE)
+```
+
+
+```{r}
+cnw_performances %>% 
+  mutate(place = str_squish(place)) %>% 
+  mutate_at("place", na_if, "") %>% 
+  filter(place != "Copenhagen"|is.na(place)) %>% 
+  group_by(place) %>% 
+  summarise(n = n()) %>% 
+  mutate(place = reorder(place, n)) %>%
+  slice_max(n, n = 40) %>% 
+  ggplot(aes(x = place, y = n)) +
+  geom_col() +
+  ggtitle("CNW - perfomances pr place") +
+  coord_flip() +
+  theme(axis.text.y = element_text(angle=30, size = 6))
+```
+
+
+
+
+
+```{r}
+ggsave("../graphics/CNW_perfomanes_pr_place.png", width = 25, height = 20, units = "cm")
+```
+

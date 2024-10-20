@@ -1,0 +1,107 @@
+---
+title: "Mapping the performances"
+format: html
+editor: visual
+---
+
+# Libraries
+
+```{r}
+library(tidyverse)
+library(tidytext)
+library(leaflet)
+```
+
+# Load data
+
+```{r}
+cnw <- readRDS("../output_data/cnw_dataframe.rds")
+cnw_cities <- readRDS("../output_data/20241020_cnw_performances_geographical_information.rds")
+```
+
+# Unnest performances
+```{r}
+cnw_performances <- cnw %>% 
+  unnest(performances)
+```
+
+# Adding coordinates to dataframe with counts of performances
+
+```{r}
+cnw_performances <-cnw_performances %>% 
+  left_join(cnw_cities, by = "place")
+```
+
+# Which country has seen the most performances of Carl Nielsen Works? 
+```{r}
+cnw_performances %>% 
+  drop_na(country) %>% 
+  count(country, sort = TRUE)
+```
+
+
+# Top nine countries abroad
+
+```{r}
+cnw_performances %>% 
+  filter(country != "Danmark") %>% 
+  drop_na(country) %>% 
+  count(country, sort = TRUE) %>% 
+  slice_max(n, n = 10) %>% 
+  pull(country) -> top_9_countries
+```
+
+Which titles has been performed most abroad in the top ten countries:
+
+```{r}
+cnw_performances %>% 
+  filter(country != "Danmark") %>% 
+  filter(country %in% top_9_countries) %>% 
+  mutate(short_title = if_else(is.na(title_da), paste0("No title"), str_sub(title_da, start = 1L, end = 25L))) %>% 
+  group_by(country) %>% 
+  count(short_title, sort = TRUE) %>% 
+  slice_max(n, n = 6) %>%  
+  ungroup() %>% 
+  mutate(country = factor(country, levels=top_9_countries),
+           short_title = reorder_within(short_title, n, country)) %>%
+  ggplot(aes(short_title, n)) +
+  geom_col(show.legend = FALSE, fill = "lightblue") +
+  facet_wrap(~country, scales = "free_y", ncol = 3) +
+  coord_flip() +
+  scale_x_reordered() +
+  scale_y_continuous(expand = c(0,0)) +
+  labs(title = "Top 5 performed Carl Nielsen works within the nine countries with most performances", 
+       subtitle = "From 1888 to 1932",
+       caption = "Based on the performances noted in Catalogue of Carl Nielsen's Works. Performances of Carl Nielsen works noted here are not exhaustive") 
+```
+
+#Calculating circles for leaflet:
+
+
+
+```{r}
+cnw_performance_map <- cnw_performances %>% 
+  filter(place != "") %>% 
+  mutate(place = str_remove(place, "\\(\\?\\)")) %>% 
+  mutate(place = str_squish(place)) %>% 
+  mutate(place = str_replace(place, "København", "Copenhagen")) %>% 
+  count(place, sort = TRUE) %>% 
+  filter( n >= 3) %>% 
+  filter(place != "Copenhagen") %>% 
+  left_join(cnw_cities, by = "place") %>% 
+  mutate(n_plus = n + 2) %>% 
+  mutate(n_log = log(n_plus)) %>% 
+  mutate(n_log_pwr = n_log^2) %>% 
+  mutate(lon = as.numeric(lon), lat = as.numeric(lat))
+```
+
+```{r}
+title_html <- '<div style="width: 400px;"><h1 style="font-size: 16px;">Performances of Carl Nielsen Works</h1> <p style="font-size: 12px;"> </p> Forklar forklar<p style="font-size: 12px;">Cirklernes koordinater er indsamlet maskinelt på baggrund af "place"</div>'
+
+
+cnw_performance_map %>% 
+  leaflet() %>% 
+  addTiles() %>%
+  addCircleMarkers(~lon, ~lat, radius = ~n_log_pwr, stroke = TRUE, weight = 1, color = "black",  popup = ~paste0('<b>Query for getting coordinates:</b> ',place, "<br><b>Count of perfomance</b>: ", n), fillColor = "darkgreen", fillOpacity = 0.7, ) %>% 
+  addControl(title_html, position = "topright")
+```
