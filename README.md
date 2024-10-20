@@ -1,4 +1,5 @@
-# MappingCarlNielsensWorks
+# Mapping Carl Nielsen's Works
+![](./graphics/cnw_authors.png)
 This repository hold the materials used in the workshop "Mining the works of Carl Nielsen" from AU Library at Royal Danish Library. The workshop is about analyzing the musical works of Carl Nielsen, by using digital methods. 
  
 The aim of this workshop is to introduce absolute newcomers to digital methods and working with data. This is done by attendees working with the methods and material themselves. The overall area of interest is the Danish composer Carl Nielsen works. These works have been collected and organised into the platform [Catalogue of Carl Nielsen's Works](https://www.kb.dk/dcm/cnw/about.xq) by Danish Centre for Music Editing.
