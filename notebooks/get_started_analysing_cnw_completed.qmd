@@ -7,19 +7,22 @@ editor: visual
 # Loading Libraries
 
 ```{r}
-
+library(tidyverse)
+library(tidytext)
 ```
 
 # Load data
 
 ```{r}
-
+cnw <- readRDS("output_data/cnw_dataframe.rds")
 ```
 
 # Which authors has Carl Nielsen composed most music to:
 
 ```{r}
-
+cnw %>% 
+  filter(author != "") %>% 
+  count(author, sort = TRUE)
 ```
 
 # Which city/place has seen most performances of Carl Nielsen Works?
@@ -27,37 +30,58 @@ editor: visual
 For now we'll just look at a single work:
 
 ```{r}
-
+cnw %>% 
+  filter(title_da == "Saul og David")
 ```
 
 We see that the row under performances holds a "tibble", which is a dataframe. This dataframe contains all the performances of Saul and David, but we cant count how many because it is in a dataframe within a row. But we can unpack this dataframe while retaining all the other information:
 
 ```{r}
-
+cnw %>% 
+  filter(title_da == "Saul og David") %>% 
+  unnest(performances)
 ```
 
 There is 112 performances of Saul and David. But this is just for one work. We do the same for the entire dataset and save it to a new data frame, since we are changing dramatically on the form of of the data. We're making the shift from having one work pr. row to have one performances of a work pr. row:
 
 ```{r}
-
+cnw_performances <- cnw %>%
+  unnest(performances) 
 ```
 
 Since all the other data have been retained for each performances we can now count to see which work has been performened the most:
 
 ```{r}
-
+cnw_performances %>% 
+  count(title_da, sort = TRUE)
 ```
 
 Following the same logic we can also examine which city has seen the most performances:
 
 ```{r}
-
+cnw_performances %>% 
+  count(place, sort = TRUE)
 ```
 
 Copenhagen is out of proportions - lets filter it out for a nice visualisation:
 
 ```{r}
-
+cnw_performances %>% 
+  filter(place != "") %>% 
+  filter(place != "Copenhagen") %>% 
+  count(place, sort = TRUE) %>% 
+   slice_max(n, n = 15) %>% 
+  mutate(place = reorder(place, n)) %>%
+  ggplot(aes(x = place, y = n)) +
+  geom_col(fill = "lightblue") +
+  coord_flip() +
+  labs(
+    title    = "Performances of Carl Nielsen works outside of Copenhagen",
+    subtitle = "- dispersed on cities",
+    caption = "Data from Catalogue of Carl Nielsen's Works (CNW)",
+    x = "City",
+    y = "Count of performances"
+  ) 
 ```
 
 # Which titles in which countries?
@@ -71,17 +95,24 @@ cnw_cities <- readRDS("output_data/20241020_cnw_performances_geographical_inform
 Add the geographical data to the performances data frame:
 
 ```{r}
-
+cnw_performances <- cnw_performances %>% 
+  left_join(cnw_cities, by = "place")
 ```
 
 Dispersions of performances on country:
 
 ```{r}
-
+cnw_performances %>% 
+  drop_na(country) %>% 
+  count(country, sort  = TRUE)
 ```
 
 Which titles has been performed the most in Denmark:
 
 ```{r}
-
+cnw_performances %>% 
+  filter(country == "Danmark") %>% 
+  count(title_da, sort = TRUE)
 ```
+
+
