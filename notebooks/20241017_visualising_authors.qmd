@@ -14,7 +14,7 @@ library(magick)
 # Load data
 
 ```{r}
-cnw <- readRDS("../output_data/preliminary_performances_music_enriched.rds")
+cnw <- readRDS("../data-output/cnw_dataframe.rds")
 ```
 
 # Which authors has Carl Nielsen composed most music to:
@@ -46,23 +46,6 @@ cnw_top5_author <- cnw_top5_author %>%  add_column(file = filenames)
 cnw_top5_author
 ```
 
-```{r}
-jp <- load.image("../graphics/images/JP_Jacobsen.png")
-gv <- load.image("../graphics/images/grundtvig.png")
-```
-
-```{r}
-plot(jp)
-plot(gv)
-```
-
-```{r}
-jp
-```
-
-```{r}
-gv
-```
 
 ```{r}
 cnw_top5_author %>% 
@@ -81,12 +64,17 @@ cnw_top5_author %>%
   ) +
   theme_bw(15) +
   labs(
-    title    = "Most frequent authors with cnw works",
-    subtitle = "based on data from cnw",
-    x = "Authro",
-    y = "count of works with cnw music "
+    title    = "Authors with most Carl Nielsen Works written for them",
+    subtitle = "based on data from Catalogue of Carl Nielsen's Works",
+    x = "Author",
+    y = "Count of Works"
   ) +
   theme(legend.position = 'none') +
   theme(axis.text.x = element_text(angle = 30, hjust = 1)) + 
   coord_flip()
 ```
+
+```{r}
+ggsave("../graphics/cnw_authors.png", width = 30, height = 20, units = "cm")
+```
+

@@ -14,7 +14,7 @@ library(tidytext)
 # Load data
 
 ```{r}
-cnw <- readRDS("output_data/cnw_dataframe.rds")
+cnw <- readRDS("../data-output/cnw_dataframe.rds")
 ```
 
 # Which authors has Carl Nielsen composed most music to:
@@ -89,7 +89,7 @@ cnw_performances %>%
 Load geographical data about cities with 3 or more performances of Carl Nielsen Works:
 
 ```{r}
-cnw_cities <- readRDS("output_data/20241020_cnw_performances_geographical_information.rds")
+cnw_cities <- readRDS("../data-output/20241020_cnw_performances_geographical_information.rds")
 ```
 
 Add the geographical data to the performances data frame:
@@ -114,5 +114,3 @@ cnw_performances %>%
   filter(country == "Danmark") %>% 
   count(title_da, sort = TRUE)
 ```
-
-
