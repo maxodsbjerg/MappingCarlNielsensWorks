@@ -83,6 +83,9 @@ cnw_performances %>%
     y = "Count of performances"
   ) 
 ```
+```{r}
+ggsave("../graphics/cnw_performances_outside_cph.png", width = 20, height = 14, units = "cm")
+```
 
 # Which titles in which countries?
 
