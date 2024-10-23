@@ -7,7 +7,8 @@ The material used in this workshop is data extracted from the raw data used in t
 
 The data used on the platform [Catalogue of Carl Nielsen's Works](https://www.kb.dk/dcm/cnw/about.xq) is availabe in raw xml-format here: [Download-site raw xml data for Carl Nielsen's Works](https://loar.kb.dk/items/7095cffa-6c9c-42c5-b1a7-44deae920871)
 
-In the workshop, we will focus on three questions:
-Which authors has Carl Nielsen composed to?
-Where in the world the works have been performed?
-Which tempos have been used most frequently used?
+## Content of the workshop 
+- Which author has Carl Nielsen composed most works for 
+- Where has Carl Nielsens Works been performed? 
+- Which titles were performed in which countries 
+
